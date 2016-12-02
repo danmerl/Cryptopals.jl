@@ -177,3 +177,31 @@ function decryptCBCByHand(ctbytes::Array{UInt8,1}, blocksize, ivbytes::Array{UIn
     end
     return ptbytes
 end;
+
+function isThisECBOrCBC(ctbytes::Array{UInt8,1}, blocksize=16)
+    nblocks = convert(Int64, length(ctbytes)/blocksize)
+    interblocksimilarity = []
+    for ii in 1:(nblocks-1)
+        for jj in (ii+1):nblocks
+            blockii = ctbytes[((ii-1)*blocksize+1):(ii*blocksize)]
+            blockjj = ctbytes[((jj-1)*blocksize+1):(jj*blocksize)]
+            samebits = ~(blockii $ blockjj)
+            similarity = 0
+            for cc in samebits
+                ccbits = bits(cc)
+                for dd in 1:length(ccbits)
+                    if ccbits[dd]=='1'
+                        similarity+=1
+                    end
+                end
+            end
+            push!(interblocksimilarity, similarity/(8*blocksize))
+        end
+    end
+    pexactsame = sum(interblocksimilarity.==1)/length(interblocksimilarity)
+    cipher = "cbc"
+    if pexactsame > 0.5
+        cipher = "ecb"
+    end
+    return (cipher, pexactsame, interblocksimilarity)
+end;
